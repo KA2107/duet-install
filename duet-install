@@ -311,44 +311,46 @@ FindStuff() {
 	fi
 
 	# Verify presence of BootDuet files...
-	if [[ ${lbaMode} == "32" ]]; then
-		if [[ ! ( -e ${bootDuetPath}/bd32.bin && -e ${bootDuetPath}/bd16.bin && -e ${bootDuetPath}/bd12.bin ) ]]; then
+	if [[ "${lbaMode}" == "32" ]]; then
+		if [[ ! ( -e "${bootDuetPath}/bd32.bin" && -e "${bootDuetPath}/bd16.bin" && -e "${bootDuetPath}/bd12.bin" ) ]]; then
 			echo "Some or all BootDuet 32-bit files are missing! (Did you compile bootduet?) Aborting!"
 			exit 1
 		fi
 	else # 64-bit LBA mode selected; requires different BootDuet files...
-		if [[ ! ( -e ${bootDuetPath}/bd32_64.bin && -e ${bootDuetPath}/bd16_64.bin) ]]; then
+		if [[ ! ( -e "${bootDuetPath}/bd32_64.bin" && -e "${bootDuetPath}/bd16_64.bin" ) ]]; then
 			echo "Some or all BootDuet 64-bit files are missing! (Did you compile bootduet?) Aborting!"
 			exit 1
 		fi
 	fi # BootDuet file verification
 
 	# Abort if necessary programs aren't installed....
-	if [[ ${mkfsTarget} == "1" ]]; then
-		if [[ ! -x $MKDOSFS ]]; then
+	if [[ "${mkfsTarget}" == "1" ]]; then
+		if [[ ! -x "${MKDOSFS}" ]]; then
 			echo "Can't find mkdosfs! Aborting!"
 			exit 1
 		fi
 	else # Won't be making FAT filesystem...
-		if [[ ! -x $XXD ]]; then
+		if [[ ! -x "${XXD}" ]]; then
 			echo "Can't find xxd (required when not making a FAT filesystem)! Aborting!"
-	 echo "Install vim or use -F to reformat your target partition."
-	 exit 1
+			echo "Install vim or use -F to reformat your target partition."
+			exit 1
 		fi
 	fi
-	if [[ $tableType == "gpt" ]]; then
-		if [[ ! -x $SGDISK ]]; then
+
+	if [[ "${tableType}" == "gpt" ]]; then
+		if [[ ! -x "${SGDISK}" ]]; then
 			echo "This program requires GPT fdisk (sgdisk) to work on GPT disks! Aborting!"
-	 exit 1
+			exit 1
 		fi
 	else # MBR disk
-		if [[ ! -x $PARTED ]]; then
+		if [[ ! -x "${PARTED}" ]]; then
 			echo "This program requires GNU Parted to work on MBR disks! Aborting!"
-	 exit 1
+			exit 1
 		fi
-		if [[ ! -x $SFDISK ]]; then
+		
+		if [[ ! -x "${SFDISK}" ]]; then
 			echo "This program requires sfdisk to work on MBR disks! Aborting!"
-	 exit 1
+			exit 1
 		fi
 	fi
 
@@ -357,19 +359,21 @@ FindStuff() {
 
 # Backs up the original MBR and PBR
 BackupBootCode() {
-	extension=0
-	mkdir -p /root/duet-install-backups
-	filename=/root/duet-install-backups/mbr-backup.$extension
-	while [[ -e /root/duet-install-backups/mbr-backup.$extension ]]
-	do
-		extension=`expr $extension + 1`
+	extension="0"
+	mkdir -p "/root/duet-install-backups"
+	filename="/root/duet-install-backups/mbr-backup.${extension}"
+
+	while [[ -e "/root/duet-install-backups/mbr-backup.${extension}" ]]; do
+		extension="$(expr ${extension} + 1)"
 	done
-	dd if=$targetDisk of=/root/duet-install-backups/mbr-backup.$extension bs=512 count=1 &> /dev/null
-	while [[ -e /root/duet-install-backups/pbr-backup.$extension ]]
-	do
-		extension=`expr $extension + 1`
+
+	dd if="${targetDisk}" of="/root/duet-install-backups/mbr-backup.${extension}" bs="512" count="1" &> /dev/null
+
+	while [[ -e "/root/duet-install-backups/pbr-backup.${extension}" ]]; do
+		extension="$(expr ${extension} + 1)"
 	done
-	dd if=${targetPart} of=/root/duet-install-backups/pbr-backup.$extension bs=512 count=1 &> /dev/null
+
+	dd if="${targetPart}" of="/root/duet-install-backups/pbr-backup.${extension}" bs="512" count="1" &> /dev/null
 } # BackupBootCode
 
 # Returns 4-byte hexadecimal representation of the input number, in
@@ -377,17 +381,17 @@ BackupBootCode() {
 # $1 = Input number to be returned in hex
 GetHex() {
 	hexValue=""
-	hexTemp=`printf '%08x' $1`
+	hexTemp="$(printf '%08x' ${1})"
 	for start in 7 5 3 1 ; do
-		let end=($start)+1
-		hexValue=$hexValue`echo $hexTemp | cut -b $start-$end`" "
+		let end=(${start})+1
+		hexValue="${hexValue}$(echo ${hexTemp} | cut -b ${start}-${end}) "
 	done
 } # GetHex()
 
 PrepareDisk() {
 	echo "Preparing disk..."
 
-	mtabContents=`cat /etc/mtab | grep ${targetPart}`
+	mtabContents="$(cat /etc/mtab | grep ${targetPart})"
 
 	if [[ $mtabContents != "" ]]; then
 		origMountPoint=`echo $mtabContents | cut -f 2 -d " "`
